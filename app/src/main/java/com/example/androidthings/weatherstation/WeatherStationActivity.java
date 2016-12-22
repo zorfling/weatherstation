@@ -46,15 +46,24 @@ import java.io.IOException;
 public class WeatherStationActivity extends Activity {
 
     private static final String TAG = WeatherStationActivity.class.getSimpleName();
+    public static final int NOTE_C = 60;
+    public static final int NOTE_D = 62;
+    public static final int NOTE_E = 64;
+    public static final int NOTE_F = 65;
+    public static final int NOTE_G = 67;
+    public static final int NOTE_A = 69;
+
+
 
     private enum DisplayMode {
         TEMPERATURE,
-        PRESSURE
+        PRESSURE,
+        XMAS;
     }
-
     private SensorManager mSensorManager;
 
     private ButtonInputDriver mButtonInputDriver;
+    private ButtonInputDriver mButton2InputDriver;
     private Bmx280SensorDriver mEnvironmentalSensorDriver;
     private AlphanumericDisplay mDisplay;
     private DisplayMode mDisplayMode = DisplayMode.TEMPERATURE;
@@ -68,6 +77,7 @@ public class WeatherStationActivity extends Activity {
     private static final float BAROMETER_RANGE_RAINY = 990.f;
 
     private Gpio mLed;
+    private Gpio mLed2;
 
     private int SPEAKER_READY_DELAY_MS = 300;
     private Speaker mSpeaker;
@@ -159,6 +169,10 @@ public class WeatherStationActivity extends Activity {
                     Button.LogicState.PRESSED_WHEN_LOW, KeyEvent.KEYCODE_A);
             mButtonInputDriver.register();
             Log.d(TAG, "Initialized GPIO Button that generates a keypress with KEYCODE_A");
+            mButton2InputDriver = new ButtonInputDriver(BoardDefaults.getButton2GpioPin(),
+                    Button.LogicState.PRESSED_WHEN_LOW, KeyEvent.KEYCODE_B);
+            mButton2InputDriver.register();
+            Log.d(TAG, "Initialized GPIO Button that generates a keypress with KEYCODE_A");
         } catch (IOException e) {
             throw new RuntimeException("Error initializing GPIO button", e);
         }
@@ -196,8 +210,7 @@ public class WeatherStationActivity extends Activity {
             mLedstrip = new Apa102(BoardDefaults.getSpiBus(), Apa102.Mode.BGR);
             mLedstrip.setBrightness(LEDSTRIP_BRIGHTNESS);
             for (int i = 0; i < mRainbow.length; i++) {
-                float[] hsv = {i * 360.f / mRainbow.length, 1.0f, 1.0f};
-                mRainbow[i] = Color.HSVToColor(255, hsv);
+                mRainbow[i] = i % 2 == 0 ? Color.RED : Color.GREEN;
             }
         } catch (IOException e) {
             mLedstrip = null; // Led strip is optional.
@@ -210,6 +223,10 @@ public class WeatherStationActivity extends Activity {
             mLed.setEdgeTriggerType(Gpio.EDGE_NONE);
             mLed.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
             mLed.setActiveType(Gpio.ACTIVE_HIGH);
+            mLed2 = pioService.openGpio(BoardDefaults.getLed2GpioPin());
+            mLed2.setEdgeTriggerType(Gpio.EDGE_NONE);
+            mLed2.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
+            mLed2.setActiveType(Gpio.ACTIVE_HIGH);
         } catch (IOException e) {
             throw new RuntimeException("Error initializing led", e);
         }
@@ -246,7 +263,40 @@ public class WeatherStationActivity extends Activity {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    slide.start();
+                    try {
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_E, true);
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_E, true);
+
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_G, false);
+                        playNote(NOTE_C, false);
+                        playNote(NOTE_D, false);
+                        playNote(NOTE_E, true);
+
+                        Thread.sleep(500);
+
+                        playNote(NOTE_F, false);
+                        playNote(NOTE_F, false);
+                        playNote(NOTE_F, true);
+
+                        playNote(NOTE_F, false);
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_E, true);
+
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_D, false);
+                        playNote(NOTE_D, false);
+                        playNote(NOTE_E, false);
+                        playNote(NOTE_D, true);
+                        playNote(NOTE_G, true);
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    //slide.start();
                 }
             }, SPEAKER_READY_DELAY_MS);
         } catch (IOException e) {
@@ -266,6 +316,16 @@ public class WeatherStationActivity extends Activity {
         }
     }
 
+    private double getHertz(int midiNote) {
+        return Math.pow(2, (midiNote - 69) / 12.0) * 440;
+    }
+
+    private void playNote(int midiNote, boolean longNote) throws IOException, InterruptedException {
+        mSpeaker.play(getHertz(midiNote));
+        Thread.sleep(longNote ? 500 : 300);
+        mSpeaker.stop();
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_A) {
@@ -278,8 +338,20 @@ public class WeatherStationActivity extends Activity {
             }
             return true;
         }
+        if (keyCode == KeyEvent.KEYCODE_B) {
+            mDisplayMode = DisplayMode.XMAS;
+            updateDisplay("XMAS");
+            try {
+                mLed2.setValue(true);
+            } catch (IOException e) {
+                Log.e(TAG, "error updating LED", e);
+            }
+            return true;
+        }
         return super.onKeyUp(keyCode, event);
     }
+
+
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
@@ -288,6 +360,16 @@ public class WeatherStationActivity extends Activity {
             updateDisplay(mLastTemperature);
             try {
                 mLed.setValue(false);
+            } catch (IOException e) {
+                Log.e(TAG, "error updating LED", e);
+            }
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_B) {
+            mDisplayMode = DisplayMode.TEMPERATURE;
+            updateDisplay(mLastTemperature);
+            try {
+                mLed2.setValue(false);
             } catch (IOException e) {
                 Log.e(TAG, "error updating LED", e);
             }
@@ -322,6 +404,14 @@ public class WeatherStationActivity extends Activity {
                 e.printStackTrace();
             }
             mButtonInputDriver = null;
+        }
+        if (mButton2InputDriver != null) {
+            try {
+                mButton2InputDriver.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            mButton2InputDriver = null;
         }
 
         if (mDisplay != null) {
@@ -358,6 +448,16 @@ public class WeatherStationActivity extends Activity {
                 mLed = null;
             }
         }
+        if (mLed2 != null) {
+            try {
+                mLed2.setValue(false);
+                mLed2.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Error disabling led", e);
+            } finally {
+                mLed2 = null;
+            }
+        }
 
         // clean up Cloud PubSub publisher.
         if (mPubsubPublisher != null) {
@@ -369,6 +469,16 @@ public class WeatherStationActivity extends Activity {
     }
 
     private void updateDisplay(float value) {
+        if (mDisplay != null) {
+            try {
+                mDisplay.display(value);
+            } catch (IOException e) {
+                Log.e(TAG, "Error setting display", e);
+            }
+        }
+    }
+
+    private void updateDisplay(String value) {
         if (mDisplay != null) {
             try {
                 mDisplay.display(value);

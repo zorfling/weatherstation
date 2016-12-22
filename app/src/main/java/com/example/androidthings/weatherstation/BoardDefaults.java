@@ -45,6 +45,20 @@ public final class BoardDefaults {
         }
     }
 
+    public static String getButton2GpioPin() {
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
+                return "IO12";
+            case DEVICE_EDISON:
+                return "GP44";
+            case DEVICE_RPI3:
+                return "BCM20";
+            case DEVICE_NXP:
+                return "GPIO4_IO20";
+            default:
+                throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
+        }
+    }
     public static String getLedGpioPin() {
         switch (getBoardVariant()) {
             case DEVICE_EDISON_ARDUINO:
@@ -53,6 +67,21 @@ public final class BoardDefaults {
                 return "GP45";
             case DEVICE_RPI3:
                 return "BCM6";
+            case DEVICE_NXP:
+                return "GPIO4_IO21";
+            default:
+                throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
+        }
+    }
+
+    public static String getLed2GpioPin() {
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
+                return "IO13";
+            case DEVICE_EDISON:
+                return "GP45";
+            case DEVICE_RPI3:
+                return "BCM19";
             case DEVICE_NXP:
                 return "GPIO4_IO21";
             default:

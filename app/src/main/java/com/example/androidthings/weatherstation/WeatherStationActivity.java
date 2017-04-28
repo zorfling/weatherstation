@@ -25,6 +25,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -52,8 +53,7 @@ public class WeatherStationActivity extends Activity {
     public static final int NOTE_F = 65;
     public static final int NOTE_G = 67;
     public static final int NOTE_A = 69;
-
-
+    private AsyncTask<Void, Void, Void> mJingleBellsTask;
 
     private enum DisplayMode {
         TEMPERATURE,
@@ -263,38 +263,8 @@ public class WeatherStationActivity extends Activity {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_E, true);
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_E, true);
-
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_G, false);
-                        playNote(NOTE_C, false);
-                        playNote(NOTE_D, false);
-                        playNote(NOTE_E, true);
-
-                        Thread.sleep(500);
-
-                        playNote(NOTE_F, false);
-                        playNote(NOTE_F, false);
-                        playNote(NOTE_F, true);
-
-                        playNote(NOTE_F, false);
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_E, true);
-
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_D, false);
-                        playNote(NOTE_D, false);
-                        playNote(NOTE_E, false);
-                        playNote(NOTE_D, true);
-                        playNote(NOTE_G, true);
-                    } catch (IOException | InterruptedException e) {
-                        e.printStackTrace();
+                    if (mJingleBellsTask == null || mJingleBellsTask.getStatus() == AsyncTask.Status.FINISHED) {
+                        mJingleBellsTask = new JingleBellsTask().execute();
                     }
                     //slide.start();
                 }
@@ -313,6 +283,42 @@ public class WeatherStationActivity extends Activity {
             } catch (IOException e) {
                 Log.e(TAG, "error creating pubsub publisher", e);
             }
+        }
+    }
+
+    private void playJingleBells() {
+        try {
+            playNote(NOTE_E, false);
+            playNote(NOTE_E, false);
+            playNote(NOTE_E, true);
+            playNote(NOTE_E, false);
+            playNote(NOTE_E, false);
+            playNote(NOTE_E, true);
+
+            playNote(NOTE_E, false);
+            playNote(NOTE_G, false);
+            playNote(NOTE_C, false);
+            playNote(NOTE_D, false);
+            playNote(NOTE_E, true);
+
+            Thread.sleep(500);
+
+            playNote(NOTE_F, false);
+            playNote(NOTE_F, false);
+            playNote(NOTE_F, true);
+
+            playNote(NOTE_F, false);
+            playNote(NOTE_E, false);
+            playNote(NOTE_E, true);
+
+            playNote(NOTE_E, false);
+            playNote(NOTE_D, false);
+            playNote(NOTE_D, false);
+            playNote(NOTE_E, false);
+            playNote(NOTE_D, true);
+            playNote(NOTE_G, true);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
@@ -341,6 +347,11 @@ public class WeatherStationActivity extends Activity {
         if (keyCode == KeyEvent.KEYCODE_B) {
             mDisplayMode = DisplayMode.XMAS;
             updateDisplay("XMAS");
+
+            if (mJingleBellsTask == null || mJingleBellsTask.getStatus() == AsyncTask.Status.FINISHED) {
+                mJingleBellsTask = new JingleBellsTask().execute();
+            }
+
             try {
                 mLed2.setValue(true);
             } catch (IOException e) {
@@ -350,8 +361,6 @@ public class WeatherStationActivity extends Activity {
         }
         return super.onKeyUp(keyCode, event);
     }
-
-
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
@@ -513,6 +522,15 @@ public class WeatherStationActivity extends Activity {
             mLedstrip.write(colors);
         } catch (IOException e) {
             Log.e(TAG, "Error setting ledstrip", e);
+        }
+    }
+
+    private class JingleBellsTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            playJingleBells();
+            return null;
         }
     }
 }
